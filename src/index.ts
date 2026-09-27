@@ -119,17 +119,14 @@ async function telegramApi(
   method: string,
   parameters: Record<string, unknown>,
 ): Promise<unknown> {
-
   const url =
     `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
 
   const response = await fetch(url, {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
     },
-
     body: JSON.stringify(parameters),
   });
 
