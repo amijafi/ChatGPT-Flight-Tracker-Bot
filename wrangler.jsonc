@@ -1,6 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+
   "name": "flight-tracker-bot",
+
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-27"
+
+  "compatibility_date": "2026-09-27",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flight-tracker-db",
+      "database_id": "1d4d7f35-981b-4a63-9bdf-0e1c9888f5af",
+      "migrations_dir": "migrations"
+    }
+  ]
 }
