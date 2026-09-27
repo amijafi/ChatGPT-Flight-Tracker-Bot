@@ -121,7 +121,7 @@ async function telegramApi(
 ): Promise<unknown> {
 
   const url =
-  `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
+    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -133,13 +133,11 @@ async function telegramApi(
     body: JSON.stringify(parameters),
   });
 
-
   const result = await response.json() as {
     ok: boolean;
     result?: unknown;
     description?: string;
   };
-
 
   if (!result.ok) {
     throw new Error(
@@ -147,10 +145,8 @@ async function telegramApi(
     );
   }
 
-
   return result.result;
 }
-
 
 /**
  * ------------------------------------------------------------
