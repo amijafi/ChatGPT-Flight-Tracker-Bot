@@ -121,7 +121,7 @@ async function telegramApi(
 ): Promise<unknown> {
 
   const url =
-    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
+  `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`;
 
   const response = await fetch(url, {
     method: "POST",
