@@ -89,28 +89,98 @@ async function telegramApi(
   return result.result;
 }
 
+async function sendNewMessage(
+  env: Env,
+  chatId: number,
+  text: string,
+  keyboard?: Keyboard,
+): Promise<number> {
+  const parameters: Record<string, unknown> = {
+    chat_id: chatId,
+    text,
+    reply_markup: {
+      inline_keyboard: keyboard ?? [],
+    },
+  };
+
+  const result =
+    await telegramApi(
+      env,
+      "sendMessage",
+      parameters,
+    ) as TelegramMessage;
+
+  return result.message_id;
+}
+
 async function sendMessage(
   env: Env,
   chatId: number,
   text: string,
   keyboard?: Keyboard,
 ): Promise<void> {
-  const parameters: Record<string, unknown> = {
-    chat_id: chatId,
-    text,
+  const existing =
+    await env.DB
+      .prepare(`
+        SELECT message_id
+        FROM ui_messages
+        WHERE chat_id = ?
+      `)
+      .bind(chatId)
+      .first<{ message_id: number }>();
+
+  const replyMarkup = {
+    inline_keyboard: keyboard ?? [],
   };
 
-  if (keyboard) {
-    parameters.reply_markup = {
-      inline_keyboard: keyboard,
-    };
+  if (existing) {
+    try {
+      await telegramApi(
+        env,
+        "editMessageText",
+        {
+          chat_id: chatId,
+          message_id:
+            existing.message_id,
+          text,
+          reply_markup:
+            replyMarkup,
+        },
+      );
+
+      return;
+    } catch {
+      // The previous UI message may have been deleted manually.
+      // Fall through and create a new UI message.
+    }
   }
 
-  await telegramApi(
-    env,
-    "sendMessage",
-    parameters,
-  );
+  const messageId =
+    await sendNewMessage(
+      env,
+      chatId,
+      text,
+      keyboard,
+    );
+
+  await env.DB
+    .prepare(`
+      INSERT INTO ui_messages (
+        chat_id,
+        message_id,
+        updated_at
+      )
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(chat_id)
+      DO UPDATE SET
+        message_id = excluded.message_id,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(
+      chatId,
+      messageId,
+    )
+    .run();
 }
 
 async function answerCallbackQuery(
@@ -886,12 +956,6 @@ async function showOrigins(
           "origin:toggle:" +
           origin.id,
       },
-      {
-        text: "🗑️",
-        callback_data:
-          "origin:delete:" +
-          origin.id,
-      },
     ]);
 
   keyboard.push([
@@ -986,12 +1050,6 @@ async function showDestinations(
           ")",
         callback_data:
           "destination:toggle:" +
-          destination.id,
-      },
-      {
-        text: "🗑️",
-        callback_data:
-          "destination:delete:" +
           destination.id,
       },
     ]);
@@ -3603,123 +3661,6 @@ async function handleButton(
     return;
   }
 
-  if (data.startsWith("origin:delete_confirm:")) {
-    const id =
-      Number(data.split(":")[2]);
-
-    if (!Number.isInteger(id)) {
-      return;
-    }
-
-    const routeUsage = await env.DB
-      .prepare(`
-        SELECT COUNT(*) AS count
-        FROM routes
-        WHERE origin_id = ?
-      `)
-      .bind(id)
-      .first<{ count: number }>();
-
-    if ((routeUsage?.count ?? 0) > 0) {
-      await env.DB
-        .prepare(`
-          UPDATE origins
-          SET
-            is_active = 0,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-      await sendMessage(
-        env,
-        chatId,
-        "⚠️ This origin is used by an existing route, so it was disabled instead of deleted.",
-        [
-          [
-            {
-              text: "🌍 Back to Origins",
-              callback_data: "settings:origins",
-            },
-          ],
-        ],
-      );
-    } else {
-      await env.DB
-        .prepare(`
-          DELETE FROM origins
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-      await showOrigins(
-        env,
-        chatId,
-      );
-    }
-
-    return;
-  }
-
-  if (data.startsWith("origin:delete:")) {
-    const id =
-      Number(data.split(":")[2]);
-
-    if (!Number.isInteger(id)) {
-      return;
-    }
-
-    const origin = await env.DB
-      .prepare(`
-        SELECT name, airport_code
-        FROM origins
-        WHERE id = ?
-      `)
-      .bind(id)
-      .first<{
-        name: string;
-        airport_code: string;
-      }>();
-
-    if (!origin) {
-      await showOrigins(
-        env,
-        chatId,
-      );
-      return;
-    }
-
-    await sendMessage(
-      env,
-      chatId,
-      "🗑️ Delete Origin\n\n" +
-      "Are you sure you want to delete " +
-      origin.name +
-      " (" +
-      origin.airport_code +
-      ")?\n\n" +
-      "If this origin is already used by a route, it will be disabled instead of deleted.",
-      [
-        [
-          {
-            text: "🗑️ Yes, Delete",
-            callback_data: "origin:delete_confirm:" + id,
-          },
-        ],
-        [
-          {
-            text: "❌ Cancel",
-            callback_data: "settings:origins",
-          },
-        ],
-      ],
-    );
-
-    return;
-  }
-
   if (data.startsWith("origin:toggle:")) {
     const id =
       Number(data.split(":")[2]);
@@ -3771,131 +3712,6 @@ async function handleButton(
           {
             text: "❌ Cancel",
             callback_data: "input:cancel",
-          },
-        ],
-      ],
-    );
-
-    return;
-  }
-
-  if (
-    data.startsWith(
-      "destination:delete_confirm:",
-    )
-  ) {
-    const id =
-      Number(data.split(":")[2]);
-
-    if (!Number.isInteger(id)) {
-      return;
-    }
-
-    const routeUsage = await env.DB
-      .prepare(`
-        SELECT COUNT(*) AS count
-        FROM routes
-        WHERE destination_id = ?
-      `)
-      .bind(id)
-      .first<{ count: number }>();
-
-    if ((routeUsage?.count ?? 0) > 0) {
-      await env.DB
-        .prepare(`
-          UPDATE destinations
-          SET
-            is_active = 0,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-      await sendMessage(
-        env,
-        chatId,
-        "⚠️ This destination is used by an existing route, so it was disabled instead of deleted.",
-        [
-          [
-            {
-              text: "📍 Back to Destinations",
-              callback_data: "settings:destinations",
-            },
-          ],
-        ],
-      );
-    } else {
-      await env.DB
-        .prepare(`
-          DELETE FROM destinations
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-      await showDestinations(
-        env,
-        chatId,
-      );
-    }
-
-    return;
-  }
-
-  if (
-    data.startsWith(
-      "destination:delete:",
-    )
-  ) {
-    const id =
-      Number(data.split(":")[2]);
-
-    if (!Number.isInteger(id)) {
-      return;
-    }
-
-    const destination = await env.DB
-      .prepare(`
-        SELECT name, airport_code
-        FROM destinations
-        WHERE id = ?
-      `)
-      .bind(id)
-      .first<{
-        name: string;
-        airport_code: string;
-      }>();
-
-    if (!destination) {
-      await showDestinations(
-        env,
-        chatId,
-      );
-      return;
-    }
-
-    await sendMessage(
-      env,
-      chatId,
-      "🗑️ Delete Destination\n\n" +
-      "Are you sure you want to delete " +
-      destination.name +
-      " (" +
-      destination.airport_code +
-      ")?\n\n" +
-      "If this destination is already used by a route, it will be disabled instead of deleted.",
-      [
-        [
-          {
-            text: "🗑️ Yes, Delete",
-            callback_data: "destination:delete_confirm:" + id,
-          },
-        ],
-        [
-          {
-            text: "❌ Cancel",
-            callback_data: "settings:destinations",
           },
         ],
       ],
