@@ -146,6 +146,92 @@ async function registerUser(
     .run();
 }
 
+async function setConversationState(
+  env: Env,
+  telegramUserId: number,
+  state: string,
+  data?: Record<string, unknown>,
+): Promise<void> {
+  const userResult = await env.DB
+    .prepare(`
+      SELECT id
+      FROM users
+      WHERE telegram_user_id = ?
+    `)
+    .bind(telegramUserId)
+    .first<{ id: number }>();
+
+  if (!userResult) {
+    return;
+  }
+
+  await env.DB
+    .prepare(`
+      INSERT INTO conversation_states (
+        user_id,
+        state,
+        data,
+        updated_at
+      )
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+
+      ON CONFLICT(user_id)
+      DO UPDATE SET
+        state = excluded.state,
+        data = excluded.data,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(
+      userResult.id,
+      state,
+      data ? JSON.stringify(data) : null,
+    )
+    .run();
+}
+
+async function getConversationState(
+  env: Env,
+  telegramUserId: number,
+): Promise<{
+  state: string;
+  data: Record<string, unknown>;
+} | null> {
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        cs.state,
+        cs.data
+      FROM conversation_states cs
+      INNER JOIN users u
+        ON u.id = cs.user_id
+      WHERE u.telegram_user_id = ?
+    `)
+    .bind(telegramUserId)
+    .first<{
+      state: string;
+      data: string | null;
+    }>();
+
+  if (!result) {
+    return null;
+  }
+
+  let data: Record<string, unknown> = {};
+
+  if (result.data) {
+    try {
+      data = JSON.parse(result.data) as Record<string, unknown>;
+    } catch {
+      data = {};
+    }
+  }
+
+  return {
+    state: result.state,
+    data,
+  };
+}
+
 async function showMainMenu(
   env: Env,
   chatId: number,
