@@ -364,13 +364,126 @@ async function handleButton(
     ],
   );
   break;
-case "settings:origins":
+case "settings:origins": {
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        id,
+        name,
+        name_fa,
+        airport_code,
+        is_active
+      FROM origins
+      ORDER BY sort_order, name
+    `)
+    .all();
+
+  const origins = result.results as Array<{
+    id: number;
+    name: string;
+    name_fa: string | null;
+    airport_code: string;
+    is_active: number;
+  }>;
+
+  if (origins.length === 0) {
+    await sendMessage(
+      env,
+      chatId,
+      "🌍 Origins\n\n" +
+      "There are currently no origins configured.",
+      [
+        [
+          {
+            text: "➕ Add Origin",
+            callback_data: "origin:add",
+          },
+        ],
+        [
+          {
+            text: "⬅️ Settings",
+            callback_data: "menu:settings",
+          },
+        ],
+      ],
+    );
+    break;
+  }
+
+  const keyboard = origins.map((origin) => [
+    {
+      text:
+        (origin.is_active ? "🟢 " : "🔴 ") +
+        origin.name +
+        " (" +
+        origin.airport_code +
+        ")",
+      callback_data:
+        "origin:toggle:" + origin.id,
+    },
+  ]);
+
+  keyboard.push([
+    {
+      text: "➕ Add Origin",
+      callback_data: "origin:add",
+    },
+  ]);
+
+  keyboard.push([
+    {
+      text: "⬅️ Settings",
+      callback_data: "menu:settings",
+    },
+  ]);
+
   await sendMessage(
     env,
     chatId,
     "🌍 Origins\n\n" +
-    "Origin management will be implemented here.",
+    "🟢 = Active\n" +
+    "🔴 = Disabled\n\n" +
+    "Tap an origin to enable or disable it.",
+    keyboard,
+  );
+
+  break;
+}
+      case "origin:toggle": {
+  const originId = Number(
+    data.split(":")[2],
+  );
+
+  if (!Number.isInteger(originId)) {
+    break;
+  }
+
+  await env.DB
+    .prepare(`
+      UPDATE origins
+      SET
+        is_active =
+          CASE
+            WHEN is_active = 1 THEN 0
+            ELSE 1
+          END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `)
+    .bind(originId)
+    .run();
+
+  await sendMessage(
+    env,
+    chatId,
+    "✅ Origin status updated.",
     [
+      [
+        {
+          text: "🌍 Back to Origins",
+          callback_data: "settings:origins",
+        },
+      ],
       [
         {
           text: "⬅️ Settings",
@@ -379,7 +492,9 @@ case "settings:origins":
       ],
     ],
   );
+
   break;
+}
 
 case "settings:destinations":
   await sendMessage(
