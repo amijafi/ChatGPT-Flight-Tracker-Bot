@@ -315,22 +315,55 @@ async function handleButton(
       break;
 
     case "menu:settings":
-      await sendMessage(
-        env,
-        chatId,
-        "⚙️ Settings\n\n" +
-        "This will become the only place where " +
-        "configuration data is entered manually.",
-        [
-          [
-            {
-              text: "⬅️ Main Menu",
-              callback_data: "menu:main",
-            },
-          ],
-        ],
-      );
-      break;
+  await sendMessage(
+    env,
+    chatId,
+    "⚙️ Settings\n\n" +
+    "Choose what you want to configure:",
+    [
+      [
+        {
+          text: "🌍 Origins",
+          callback_data: "settings:origins",
+        },
+        {
+          text: "📍 Destinations",
+          callback_data: "settings:destinations",
+        },
+      ],
+      [
+        {
+          text: "🌐 Ticket Websites",
+          callback_data: "settings:websites",
+        },
+      ],
+      [
+        {
+          text: "⏱ Check Intervals",
+          callback_data: "settings:intervals",
+        },
+      ],
+      [
+        {
+          text: "🔔 Notifications",
+          callback_data: "settings:notifications",
+        },
+      ],
+      [
+        {
+          text: "🌐 Language",
+          callback_data: "settings:language",
+        },
+      ],
+      [
+        {
+          text: "⬅️ Main Menu",
+          callback_data: "menu:main",
+        },
+      ],
+    ],
+  );
+  break;
 
     case "menu:main":
       await showMainMenu(
