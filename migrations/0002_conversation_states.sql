@@ -1,0 +1,11 @@
+CREATE TABLE conversation_states (
+  user_id INTEGER PRIMARY KEY,
+  state TEXT NOT NULL,
+  data TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+);
