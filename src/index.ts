@@ -1714,23 +1714,20 @@ async function showMyRoutes(
   const keyboard: Keyboard = [];
 
   for (const route of routes) {
-    keyboard.push([
-      {
-        text:
-          (route.is_active
-            ? "🟢 "
-            : "🔴 ") +
-          route.origin_code +
-          " → " +
-          route.destination_code +
-          " | " +
-          route.jalali_date,
-        callback_data:
-          "route:view:" +
-          route.id,
-      },
-    ]);
-  }
+  keyboard.push([
+    {
+      text:
+        route.origin_code +
+        " → " +
+        route.destination_code +
+        " | " +
+        route.jalali_date,
+      callback_data:
+        "route:view:" +
+        route.id,
+    },
+  ]);
+}
 
   keyboard.push([
     {
@@ -1750,9 +1747,7 @@ async function showMyRoutes(
     env,
     chatId,
     "📋 My Routes\n\n" +
-    "🟢 = Active\n" +
-    "🔴 = Disabled\n\n" +
-    "Tap a route for details.",
+"Tap a route for details."
     keyboard,
   );
 }
