@@ -364,7 +364,108 @@ async function handleButton(
     ],
   );
   break;
+case "settings:origins":
+  await sendMessage(
+    env,
+    chatId,
+    "🌍 Origins\n\n" +
+    "Origin management will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
 
+case "settings:destinations":
+  await sendMessage(
+    env,
+    chatId,
+    "📍 Destinations\n\n" +
+    "Destination management will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
+
+case "settings:websites":
+  await sendMessage(
+    env,
+    chatId,
+    "🌐 Ticket Websites\n\n" +
+    "Website management will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
+
+case "settings:intervals":
+  await sendMessage(
+    env,
+    chatId,
+    "⏱ Check Intervals\n\n" +
+    "Check interval management will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
+
+case "settings:notifications":
+  await sendMessage(
+    env,
+    chatId,
+    "🔔 Notifications\n\n" +
+    "Notification settings will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
+
+case "settings:language":
+  await sendMessage(
+    env,
+    chatId,
+    "🌐 Language\n\n" +
+    "Language settings will be implemented here.",
+    [
+      [
+        {
+          text: "⬅️ Settings",
+          callback_data: "menu:settings",
+        },
+      ],
+    ],
+  );
+  break;
+      
     case "menu:main":
       await showMainMenu(
         env,
